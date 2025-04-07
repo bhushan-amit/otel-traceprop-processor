@@ -2,40 +2,39 @@ package tracepropagatorprocessor
 
 import (
 	"context"
-	"go.opentelemetry.io/collector/component"
+	"go.uber.org/zap"
 
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	"go.opentelemetry.io/collector/processor"
 )
 
-func createTracesProcessor(
-	_ context.Context,
-	_ processor.CreateSettings,
-	cfg component.Config,
-	nextConsumer processor.Traces,
-) (processor.Traces, error) {
-	return &tracePropProcessor{
-		next: nextConsumer,
-	}, nil
+type tracePropagatorProcessor struct {
+	logger *zap.Logger
+	config *Config
+	next   consumer.Traces
 }
 
-type tracePropProcessor struct {
-	next processor.Traces
+func newTracePropagatorProcessor(logger *zap.Logger, cfg *Config, next consumer.Traces) *tracePropagatorProcessor {
+	return &tracePropagatorProcessor{
+		logger: logger,
+		config: cfg,
+		next:   next,
+	}
+}
+func (t *tracePropagatorProcessor) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: true}
 }
 
-func (p *tracePropProcessor) Capabilities() processor.Capabilities {
-	return processor.Capabilities{MutatesData: true}
+func (t *tracePropagatorProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+	// Insert your trace propagation logic here
+	return t.next.ConsumeTraces(ctx, td)
 }
 
-func (p *tracePropProcessor) Start(_ context.Context, _ component.Host) error {
+func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
+	// You can mutate or inspect the trace data here before forwarding
+	return td, nil
+}
+
+func (t *tracePropagatorProcessor) Shutdown(ctx context.Context) error {
 	return nil
-}
-
-func (p *tracePropProcessor) Shutdown(_ context.Context) error {
-	return nil
-}
-
-func (p *tracePropProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	// No-op logic for now
-	return p.next.ConsumeTraces(ctx, td)
 }
