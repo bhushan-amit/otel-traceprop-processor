@@ -1,1 +1,1 @@
-# otel-traceprop-processor
+# otel-traceprop-processor v0.1.0
