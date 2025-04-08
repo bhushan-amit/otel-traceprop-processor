@@ -2,34 +2,49 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
+	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
 	"go.opentelemetry.io/collector/otelcol"
-	"go.opentelemetry.io/collector/otelcol/otelcoltest"
 
 	tracepropagatorprocessor "github.com/bhushan-amit/otel-traceprop-processor/processor/tracepropagatorprocessor"
 )
 
 func main() {
-	factories, err := otelcoltest.NopFactories()
-	if err != nil {
-		panic(err)
-	}
+	ctx := context.Background()
 
-	factories.Processors[component.MustNewType("tracepropagator")] = tracepropagatorprocessor.NewFactory()
-
-	params := otelcol.CollectorSettings{
-		Factories: func() (otelcol.Factories, error) {
-			return factories, nil
+	// Build config provider
+	configProviderSettings := otelcol.ConfigProviderSettings{
+		ResolverSettings: confmap.ResolverSettings{
+			ProviderFactories: map[string]confmap.ProviderFactory{
+				"file": fileprovider.NewFactory(),
+				"yaml": yamlprovider.NewFactory(),
+			},
 		},
 	}
 
-	collector, err := otelcol.NewCollector(params)
-	if err != nil {
-		panic(err)
+	// Prepare the Collector Settings
+	settings := otelcol.CollectorSettings{
+		// Factories must be a function returning (Factories, error)
+		Factories: func() (otelcol.Factories, error) {
+			factories, err := otelcol.DefaultFactories()
+			if err != nil {
+				return otelcol.Factories{}, err
+			}
+
+			// Add custom processor
+			factories.Processors[component.MustNewType("tracepropagator")] = tracepropagatorprocessor.NewFactory()
+			return factories, nil
+		},
+		ConfigProviderSettings: configProviderSettings,
 	}
 
-	if err := collector.Run(context.Background()); err != nil {
-		panic(err)
+	// Build and run the collector
+	cmd := otelcol.NewCommand(settings)
+	if err := cmd.ExecuteContext(ctx); err != nil {
+		log.Fatalf("Failed to run collector: %v", err)
 	}
 }

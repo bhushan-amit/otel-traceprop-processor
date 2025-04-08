@@ -1,0 +1,14 @@
+dist:
+  name: otelcol-custom
+  description: Custom Collector with traceprop processor
+  output_path: ./otelcol-dist
+
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.123.0
+
+processors:
+  - gomod: github.com/bhushan-amit/otel-traceprop-processor v0.1.0
+    import: github.com/bhushan-amit/otel-traceprop-processor/processor/tracepropagatorprocessor
+
+exporters:
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.123.0

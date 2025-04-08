@@ -4,9 +4,11 @@ go 1.24.1
 
 require (
 	go.opentelemetry.io/collector/component v1.29.0
+	go.opentelemetry.io/collector/confmap v1.29.0
+	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.29.0
+	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.29.0
 	go.opentelemetry.io/collector/consumer v1.29.0
 	go.opentelemetry.io/collector/otelcol v0.123.0
-	go.opentelemetry.io/collector/otelcol/otelcoltest v0.123.0
 	go.opentelemetry.io/collector/pdata v1.29.0
 	go.opentelemetry.io/collector/processor v1.29.0
 	go.opentelemetry.io/collector/processor/processorhelper v0.123.0
@@ -56,11 +58,6 @@ require (
 	go.opentelemetry.io/collector/component/componentstatus v0.123.0 // indirect
 	go.opentelemetry.io/collector/component/componenttest v0.123.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.123.0 // indirect
-	go.opentelemetry.io/collector/confmap v1.29.0 // indirect
-	go.opentelemetry.io/collector/confmap/provider/envprovider v1.29.0 // indirect
-	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.29.0 // indirect
-	go.opentelemetry.io/collector/confmap/provider/httpprovider v1.29.0 // indirect
-	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.29.0 // indirect
 	go.opentelemetry.io/collector/confmap/xconfmap v0.123.0 // indirect
 	go.opentelemetry.io/collector/connector v0.123.0 // indirect
 	go.opentelemetry.io/collector/connector/connectortest v0.123.0 // indirect
