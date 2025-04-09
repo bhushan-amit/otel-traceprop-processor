@@ -32,6 +32,7 @@ func (t *tracePropagatorProcessor) ConsumeTraces(ctx context.Context, td ptrace.
 
 func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
 	t.logger.Info("🚨 processTraces() was called")
+	panic("🔥 CUSTOM PROCESSOR CALLED 🔥")
 
 	rs := td.ResourceSpans()
 
