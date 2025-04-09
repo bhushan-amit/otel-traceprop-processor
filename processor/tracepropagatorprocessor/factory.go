@@ -18,7 +18,7 @@ func NewFactory() processor.Factory {
 	return processor.NewFactory(
 		component.MustNewType(typeStr),
 		createDefaultConfig,
-		processor.WithTraces(createTracesProcessor, component.StabilityLevelAlpha),
+		processor.WithTraces(createTracesProcessor, component.StabilityLevelDevelopment),
 	)
 }
 
