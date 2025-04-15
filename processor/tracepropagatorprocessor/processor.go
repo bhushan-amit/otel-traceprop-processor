@@ -2,10 +2,10 @@ package tracepropagatorprocessor
 
 import (
 	"context"
-	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.uber.org/zap"
 )
 
 type tracePropagatorProcessor struct {
@@ -15,26 +15,64 @@ type tracePropagatorProcessor struct {
 }
 
 func newTracePropagatorProcessor(logger *zap.Logger, cfg *Config, next consumer.Traces) *tracePropagatorProcessor {
+	logger.Info("🚀 Initializing tracePropagatorProcessor")
 	return &tracePropagatorProcessor{
 		logger: logger,
 		config: cfg,
 		next:   next,
 	}
 }
+
 func (t *tracePropagatorProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
 }
 
 func (t *tracePropagatorProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	// Insert your trace propagation logic here
 	return t.next.ConsumeTraces(ctx, td)
 }
 
-func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
-	t.logger.Info("🚨 processTraces() was called")
-	panic("🔥 CUSTOM PROCESSOR CALLED 🔥")
+//func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
+//	t.logger.Info("🔧 processTraces invoked now",
+//		zap.Int("resource_span_count", td.ResourceSpans().Len()),
+//	)
+//
+//	rs := td.ResourceSpans()
+//
+//	for i := 0; i < rs.Len(); i++ {
+//		scopeSpans := rs.At(i).ScopeSpans()
+//
+//		for j := 0; j < scopeSpans.Len(); j++ {
+//			spans := scopeSpans.At(j).Spans()
+//
+//			for k := 0; k < spans.Len(); k++ {
+//				span := spans.At(k)
+//
+//				spanID := span.SpanID().String()
+//				spanName := span.Name()
+//
+//				span.Attributes().PutStr("hello", "world")
+//
+//				t.logger.Debug("📦 Added hello=world attribute to span",
+//					zap.String("span_id", spanID),
+//					zap.String("name", spanName),
+//				)
+//			}
+//		}
+//	}
+//
+//	return td, nil
+//}
 
+func (t *tracePropagatorProcessor) Shutdown(ctx context.Context) error {
+	t.logger.Info("🛑 Shutting down tracePropagatorProcessor")
+	return nil
+}
+
+func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
 	rs := td.ResourceSpans()
+
+	// Global map to store root span names keyed by their SpanID
+	parentSpanMap := make(map[string]string)
 
 	for i := 0; i < rs.Len(); i++ {
 		scopeSpans := rs.At(i).ScopeSpans()
@@ -45,82 +83,47 @@ func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.
 			for k := 0; k < spans.Len(); k++ {
 				span := spans.At(k)
 
-				spanID := span.SpanID().String()
-				spanName := span.Name()
+				// Handle root span (no parent)
+				if span.ParentSpanID().IsEmpty() {
+					spanID := span.SpanID().String()
+					spanName := span.Name()
 
-				span.Attributes().PutStr("hello", "world")
+					span.Attributes().PutStr("TraceName", spanName)
+					parentSpanMap[spanID] = spanName
 
-				t.logger.Info("✅ Added hello=world attribute",
-					zap.String("span_id", spanID),
-					zap.String("name", spanName),
-				)
+					// 🔍 Log root span processing
+					t.logger.Info("Set TraceName on root span",
+						zap.String("span_id", spanID),
+						zap.String("name", spanName))
+				}
+			}
+		}
+	}
+
+	// Second pass: set TraceParentName on child spans
+	for i := 0; i < rs.Len(); i++ {
+		scopeSpans := rs.At(i).ScopeSpans()
+
+		for j := 0; j < scopeSpans.Len(); j++ {
+			spans := scopeSpans.At(j).Spans()
+
+			for k := 0; k < spans.Len(); k++ {
+				span := spans.At(k)
+				parentID := span.ParentSpanID().String()
+
+				if !span.ParentSpanID().IsEmpty() {
+					if parentName, ok := parentSpanMap[parentID]; ok {
+						span.Attributes().PutStr("TraceParentName", parentName)
+
+						t.logger.Info("Propagated TraceParentName to child span",
+							zap.String("span_id", span.SpanID().String()),
+							zap.String("parent_span_id", parentID),
+							zap.String("parent_name", parentName))
+					}
+				}
 			}
 		}
 	}
 
 	return td, nil
-}
-
-//func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
-//	rs := td.ResourceSpans()
-//
-//	// Global map to store root span names keyed by their SpanID
-//	parentSpanMap := make(map[string]string)
-//
-//	for i := 0; i < rs.Len(); i++ {
-//		scopeSpans := rs.At(i).ScopeSpans()
-//
-//		for j := 0; j < scopeSpans.Len(); j++ {
-//			spans := scopeSpans.At(j).Spans()
-//
-//			for k := 0; k < spans.Len(); k++ {
-//				span := spans.At(k)
-//
-//				// Handle root span (no parent)
-//				if span.ParentSpanID().IsEmpty() {
-//					spanID := span.SpanID().String()
-//					spanName := span.Name()
-//
-//					span.Attributes().PutStr("TraceName", spanName)
-//					parentSpanMap[spanID] = spanName
-//
-//					// 🔍 Log root span processing
-//					t.logger.Info("Set TraceName on root span",
-//						zap.String("span_id", spanID),
-//						zap.String("name", spanName))
-//				}
-//			}
-//		}
-//	}
-//
-//	// Second pass: set TraceParentName on child spans
-//	for i := 0; i < rs.Len(); i++ {
-//		scopeSpans := rs.At(i).ScopeSpans()
-//
-//		for j := 0; j < scopeSpans.Len(); j++ {
-//			spans := scopeSpans.At(j).Spans()
-//
-//			for k := 0; k < spans.Len(); k++ {
-//				span := spans.At(k)
-//				parentID := span.ParentSpanID().String()
-//
-//				if !span.ParentSpanID().IsEmpty() {
-//					if parentName, ok := parentSpanMap[parentID]; ok {
-//						span.Attributes().PutStr("TraceParentName", parentName)
-//
-//						t.logger.Info("Propagated TraceParentName to child span",
-//							zap.String("span_id", span.SpanID().String()),
-//							zap.String("parent_span_id", parentID),
-//							zap.String("parent_name", parentName))
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//	return td, nil
-//}
-
-func (t *tracePropagatorProcessor) Shutdown(ctx context.Context) error {
-	return nil
 }

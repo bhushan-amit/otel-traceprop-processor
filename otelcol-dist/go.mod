@@ -6,6 +6,8 @@ go 1.24.1
 
 require (
 	github.com/bhushan-amit/otel-traceprop-processor v0.1.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.123.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.123.0
 	go.opentelemetry.io/collector/component v1.29.0
 	go.opentelemetry.io/collector/confmap v1.29.0
 	go.opentelemetry.io/collector/confmap/provider/envprovider v1.29.0
@@ -16,6 +18,7 @@ require (
 	go.opentelemetry.io/collector/connector v0.123.0
 	go.opentelemetry.io/collector/exporter v0.123.0
 	go.opentelemetry.io/collector/exporter/debugexporter v0.123.0
+	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.123.0
 	go.opentelemetry.io/collector/extension v1.29.0
 	go.opentelemetry.io/collector/otelcol v0.123.0
 	go.opentelemetry.io/collector/processor v1.29.0
@@ -25,6 +28,7 @@ require (
 )
 
 require (
+	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
@@ -67,6 +71,7 @@ require (
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/tg123/go-htpasswd v1.2.3 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -143,6 +148,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
@@ -153,3 +159,5 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/bhushan-amit/otel-traceprop-processor v0.1.0 => /Users/amitbhushan/Repos/otel-traceprop-processor/processor/tracepropagatorprocessor
