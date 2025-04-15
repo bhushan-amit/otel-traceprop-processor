@@ -17,8 +17,8 @@ exporters:
 extensions:
   basicauth/grafana_cloud:
     client_auth:
-      username: "1185879"
-      password: "glc_eyJvIjoiMTM2MjgwNSIsIm4iOiJzdGFjay0xMTg1ODc5LW90bHAtd3JpdGUtY29sbGVjdG9yX2xvY2FsIiwiayI6IlkyVHExN3E4NDd4T2ZSOVRSTzI1S0kzZSIsIm0iOnsiciI6InByb2QtYXAtc291dGgtMSJ9fQ=="
+      username: "${GRAFANA_USERNAME}"
+      password: "${GRAFANA_PASSWORD}"
 
 connectors:
   grafanacloud:
