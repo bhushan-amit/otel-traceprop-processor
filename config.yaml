@@ -9,10 +9,33 @@ processors:
 exporters:
   debug:
     verbosity: detailed
+  otlphttp/grafana_cloud:
+    endpoint: "https://otlp-gateway-prod-ap-south-1.grafana.net/otlp"
+    auth:
+      authenticator: basicauth/grafana_cloud
+
+extensions:
+  basicauth/grafana_cloud:
+    client_auth:
+      username: "1185879"
+      password: "glc_eyJvIjoiMTM2MjgwNSIsIm4iOiJzdGFjay0xMTg1ODc5LW90bHAtd3JpdGUtY29sbGVjdG9yX2xvY2FsIiwiayI6IlkyVHExN3E4NDd4T2ZSOVRSTzI1S0kzZSIsIm0iOnsiciI6InByb2QtYXAtc291dGgtMSJ9fQ=="
+
+connectors:
+  grafanacloud:
+    host_identifiers: ["host.name"]
+
 
 service:
+  extensions:
+    [
+      basicauth/grafana_cloud
+    ]
   pipelines:
     traces:
       receivers: [otlp]
       processors: [tracepropagator]
-      exporters: [debug]
+      exporters: [debug, otlphttp/grafana_cloud, grafanacloud]
+
+    metrics/grafanacloud:
+      receivers: [ grafanacloud ]
+      exporters: [ otlphttp/grafana_cloud ]
