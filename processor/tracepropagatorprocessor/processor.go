@@ -31,38 +31,6 @@ func (t *tracePropagatorProcessor) ConsumeTraces(ctx context.Context, td ptrace.
 	return t.next.ConsumeTraces(ctx, td)
 }
 
-//func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
-//	t.logger.Info("🔧 processTraces invoked now",
-//		zap.Int("resource_span_count", td.ResourceSpans().Len()),
-//	)
-//
-//	rs := td.ResourceSpans()
-//
-//	for i := 0; i < rs.Len(); i++ {
-//		scopeSpans := rs.At(i).ScopeSpans()
-//
-//		for j := 0; j < scopeSpans.Len(); j++ {
-//			spans := scopeSpans.At(j).Spans()
-//
-//			for k := 0; k < spans.Len(); k++ {
-//				span := spans.At(k)
-//
-//				spanID := span.SpanID().String()
-//				spanName := span.Name()
-//
-//				span.Attributes().PutStr("hello", "world")
-//
-//				t.logger.Debug("📦 Added hello=world attribute to span",
-//					zap.String("span_id", spanID),
-//					zap.String("name", spanName),
-//				)
-//			}
-//		}
-//	}
-//
-//	return td, nil
-//}
-
 func (t *tracePropagatorProcessor) Shutdown(ctx context.Context) error {
 	t.logger.Info("🛑 Shutting down tracePropagatorProcessor")
 	return nil
