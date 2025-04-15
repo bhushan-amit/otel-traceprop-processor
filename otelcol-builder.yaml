@@ -8,7 +8,16 @@ receivers:
 
 processors:
   - gomod: github.com/bhushan-amit/otel-traceprop-processor v0.1.0
-    import: github.com/bhushan-amit/otel-traceprop-processor/processor/tracepropagatorprocessor
+    import: github.com/bhushan-amit/otel-traceprop-processor
+    name: "tracepropagator"
+    path: "./processor/tracepropagatorprocessor"
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.123.0
+  - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.123.0
+
+extensions:
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.123.0
+
+connectors:
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.123.0

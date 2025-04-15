@@ -2,6 +2,7 @@ package tracepropagatorprocessor // import "github.com/bhushan-amit/otel-tracepr
 
 import (
 	"context"
+	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -32,11 +33,15 @@ func createTracesProcessor(
 	cfg component.Config,
 	nextConsumer consumer.Traces,
 ) (processor.Traces, error) {
-	// Cast config to your custom config
-	pCfg := cfg.(*Config)
+	logger := set.Logger
+	logger.Info("⚡ Creating TracePropagatorProcessor",
+		zap.String("component", "tracepropagator"),
+	)
 
-	// Instantiate your processor logic
-	p := newTracePropagatorProcessor(set.Logger, pCfg, nextConsumer)
+	pCfg := cfg.(*Config)
+	p := newTracePropagatorProcessor(logger, pCfg, nextConsumer)
+
+	logger.Info("✅ TracePropagatorProcessor created successfully")
 
 	return processorhelper.NewTraces(
 		ctx,
