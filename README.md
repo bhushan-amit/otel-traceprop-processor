@@ -5,7 +5,15 @@ A custom OpenTelemetry Collector processor that injects additional metadata into
 This processor is built to demonstrate custom trace manipulation within the OpenTelemetry Collector framework.
 
 ---
+## Pre-requisite
 
+### 1. Install [Go](https://go.dev/doc/install)
+
+### 2. Install the OpenTelemetry Collector Builder
+
+```bash
+go install go.opentelemetry.io/collector/cmd/builder@latest
+```
 ## 🔧 Setup & Usage
 
 ### 1. Build the Custom Collector
@@ -13,7 +21,7 @@ This processor is built to demonstrate custom trace manipulation within the Open
 Use the [OpenTelemetry Collector Builder](https://github.com/open-telemetry/opentelemetry-collector) to generate a custom binary with this processor included:
 
 ```bash
-builder --config=otelcol-builder.yaml
+builder --config=otelcol-builder.yaml --verbose 
 ```
 
 This will generate the custom collector binary at: ``` ./otelcol-dist/otelcol-custom```
@@ -23,7 +31,7 @@ This will generate the custom collector binary at: ``` ./otelcol-dist/otelcol-cu
 Start the collector using your built binary and a `config.yaml` that wires up the custom processor:
 
 ```bash
-./otelcol-dist/otelcol-custom --config=config.yaml
+./otelcol-dist/otelcol-custom --config=config.yaml --set=service.telemetry.logs.level=debug
 ```
 
 ### 3. Test with Generate Sample Traces

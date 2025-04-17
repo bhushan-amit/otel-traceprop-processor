@@ -1,7 +1,14 @@
 receivers:
   otlp:
+    # https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver# https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
 
 processors:
   tracepropagator: {}
@@ -23,6 +30,33 @@ extensions:
 connectors:
   grafanacloud:
     host_identifiers: ["host.name"]
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets: [100us, 1ms, 2ms, 6ms, 10ms, 100ms, 250ms]
+    dimensions:
+      - name: http.request.method
+        default: GET
+      - name: http.response.status_code
+      - name: host.name
+      - name: http.route
+      - name: TraceParentName
+        default: NOT_FOUND
+    exemplars:
+      enabled: true
+    dimensions_cache_size: 1000
+    aggregation_temporality: "AGGREGATION_TEMPORALITY_CUMULATIVE"
+    metrics_flush_interval: 15s
+    metrics_expiration: 5m
+    events:
+      enabled: true
+      dimensions:
+        - name: exception.type
+        - name: exception.message
+    resource_metrics_key_attributes:
+      - service.name
+      - telemetry.sdk.language
+      - telemetry.sdk.name
 
 
 service:
@@ -34,8 +68,8 @@ service:
     traces:
       receivers: [otlp]
       processors: [tracepropagator]
-      exporters: [debug, otlphttp/grafana_cloud, grafanacloud]
+      exporters: [debug, otlphttp/grafana_cloud, spanmetrics, grafanacloud]
 
     metrics/grafanacloud:
-      receivers: [ grafanacloud ]
+      receivers: [ grafanacloud, spanmetrics ]
       exporters: [ otlphttp/grafana_cloud ]
