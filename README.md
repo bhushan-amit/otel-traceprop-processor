@@ -13,7 +13,7 @@ This processor is built to demonstrate custom trace manipulation within the Open
 Use the [OpenTelemetry Collector Builder](https://github.com/open-telemetry/opentelemetry-collector) to generate a custom binary with this processor included:
 
 ```bash
-builder --config=otelcol-builder.yaml
+builder --config=otelcol-builder.yaml --verbose
 ```
 
 This will generate the custom collector binary at: ``` ./otelcol-dist/otelcol-custom```
@@ -23,7 +23,7 @@ This will generate the custom collector binary at: ``` ./otelcol-dist/otelcol-cu
 Start the collector using your built binary and a `config.yaml` that wires up the custom processor:
 
 ```bash
-./otelcol-dist/otelcol-custom --config=config.yaml
+./otelcol-dist/otelcol-custom --config=config.yaml --set=service.telemetry.logs.level=debug
 ```
 
 ### 3. Test with Generate Sample Traces
