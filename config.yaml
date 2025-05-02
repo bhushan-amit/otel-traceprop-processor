@@ -2,6 +2,23 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
+  hostmetrics:
+    scrapers:
+      load:
+      memory:
+  prometheus/otelcol:
+    config:
+      scrape_configs:
+        - job_name: 'otelcol'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['0.0.0.0:8888']
 
 processors:
   tracepropagator: {}
@@ -9,33 +26,58 @@ processors:
 exporters:
   debug:
     verbosity: detailed
-  otlphttp/grafana_cloud:
-    endpoint: "https://otlp-gateway-prod-ap-south-1.grafana.net/otlp"
-    auth:
-      authenticator: basicauth/grafana_cloud
-
-extensions:
-  basicauth/grafana_cloud:
-    client_auth:
-      username: "1185879"
-      password: "glc_eyJvIjoiMTM2MjgwNSIsIm4iOiJzdGFjay0xMTg1ODc5LW90bHAtd3JpdGUtY29sbGVjdG9yX2xvY2FsIiwiayI6IlkyVHExN3E4NDd4T2ZSOVRSTzI1S0kzZSIsIm0iOnsiciI6InByb2QtYXAtc291dGgtMSJ9fQ=="
+  otlp/tempo:
+    endpoint: "10.100.32.88:4317"
+    tls:
+      insecure: true
+  prometheusremotewrite:
+    endpoint: "http://10.100.32.79:3100/api/v1/write"  # Prometheus remote write endpoint
+    target_info:
+      enabled: true
+    resource_to_telemetry_conversion:
+      enabled: true
 
 connectors:
-  grafanacloud:
-    host_identifiers: ["host.name"]
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets: [100us, 1ms, 2ms, 6ms, 10ms, 100ms, 250ms]
+    dimensions:
+      - name: http.request.method
+        default: GET
+      - name: http.response.status_code
+      - name: host.name
+      - name: http.route
+      - name: TraceParentName
+        default: IsParent
+    exemplars:
+      enabled: true
+    dimensions_cache_size: 1000
+    aggregation_temporality: "AGGREGATION_TEMPORALITY_CUMULATIVE"
+    metrics_flush_interval: 15s
+    metrics_expiration: 5m
+    events:
+      enabled: true
+      dimensions:
+        - name: exception.type
+        - name: exception.message
+    resource_metrics_key_attributes:
+      - service.name
+      - telemetry.sdk.language
+      - telemetry.sdk.name
 
 
 service:
-  extensions:
-    [
-      basicauth/grafana_cloud
-    ]
   pipelines:
     traces:
       receivers: [otlp]
       processors: [tracepropagator]
-      exporters: [debug, otlphttp/grafana_cloud, grafanacloud]
+      exporters: [otlp/tempo, spanmetrics]
 
-    metrics/grafanacloud:
-      receivers: [ grafanacloud ]
-      exporters: [ otlphttp/grafana_cloud ]
+    metrics/spanmetrics:
+      receivers: [spanmetrics, otlp, hostmetrics]
+      exporters: [prometheusremotewrite]
+
+    metrics/hostmetrics:
+      receivers: [ prometheus/otelcol ]
+      exporters: [prometheusremotewrite]
