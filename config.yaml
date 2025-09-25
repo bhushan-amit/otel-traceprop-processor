@@ -1,5 +1,6 @@
 receivers:
   otlp:
+    # https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver# https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
@@ -21,15 +22,55 @@ receivers:
             - targets: ['0.0.0.0:8888']
 
 processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 85
+    spike_limit_percentage: 10
+  batch:
+    send_batch_size: 256
+    send_batch_max_size: 1024
+    timeout: 10s
+    # https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/batchprocessor
   tracepropagator: {}
+  transform/drop_unneeded_resource_attributes:
+    error_mode: ignore
+    metric_statements:
+      - context: resource
+        statements:
+          - delete_key(attributes, "telemetry.auto.version")
+          - delete_key(attributes, "telemetry.sdk.version")
+          - delete_key(attributes, "telemetry.sdk.language")
+          - delete_key(attributes, "telemetry.sdk.name")
+          - delete_key(attributes, "telemetry.distro.name")
+          - delete_key(attributes, "telemetry.distro.version")
+          - delete_key(attributes, "exception.message")
+          - delete_key(attributes, "process.runtime.description")
+          - delete_key(attributes, "process.command.args")
+          - delete_key(attributes, "process.executable.path")
+          - delete_key(attributes, "process.runtime.description")
+          - delete_key(attributes, "process.runtime.name")
+          - delete_key(attributes, "process.runtime.version")
 
 exporters:
   debug:
-    verbosity: detailed
+    verbosity: basic
+  otlphttp/grafana_cloud:
+    endpoint: "https://otlp-gateway-prod-ap-south-1.grafana.net/otlp"
+    auth:
+      authenticator: basicauth/grafana_cloud
   otlp/tempo:
     endpoint: "10.100.32.88:4317"
     tls:
       insecure: true
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 10000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+      max_elapsed_time: 300s
   prometheusremotewrite:
     endpoint: "http://10.100.32.79:3100/api/v1/write"  # Prometheus remote write endpoint
     target_info:
@@ -38,10 +79,17 @@ exporters:
       enabled: true
 
 connectors:
+  grafanacloud:
+    host_identifiers: ["host.name"]
+  servicegraph:
+    latency_histogram_buckets: [100ms, 250ms, 1s, 5s, 10s, 30s]
+    store:
+      ttl: 2m
+      max_items: 1000
   spanmetrics:
     histogram:
       explicit:
-        buckets: [100us, 1ms, 2ms, 6ms, 10ms, 100ms, 250ms]
+        buckets: [100us, 1ms, 2ms, 6ms, 10ms, 100ms, 250ms, 500ms, 750ms, 1s, 2s, 5s, 10s, 30s]
     dimensions:
       - name: http.request.method
         default: GET
@@ -49,7 +97,7 @@ connectors:
       - name: host.name
       - name: http.route
       - name: TraceParentName
-        default: IsParent
+        default: NOT_FOUND
     exemplars:
       enabled: true
     dimensions_cache_size: 1000
@@ -63,21 +111,30 @@ connectors:
         - name: exception.message
     resource_metrics_key_attributes:
       - service.name
-      - telemetry.sdk.language
-      - telemetry.sdk.name
 
 
 service:
+  extensions:
+    [
+      basicauth/grafana_cloud
+    ]
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [tracepropagator]
-      exporters: [otlp/tempo, spanmetrics]
+      processors: [memory_limiter, batch, transform/drop_unneeded_resource_attributes, tracepropagator]
+      exporters: [otlp/tempo , spanmetrics, servicegraph]
 
     metrics/spanmetrics:
       receivers: [spanmetrics, otlp, hostmetrics]
+      processors: [memory_limiter, batch, transform/drop_unneeded_resource_attributes]
+      exporters: [prometheusremotewrite]
+
+    metrics/servicegraph:
+      receivers: [servicegraph, otlp]
+      processors: [memory_limiter, batch]
       exporters: [prometheusremotewrite]
 
     metrics/hostmetrics:
-      receivers: [ prometheus/otelcol ]
+      receivers: [ prometheus/otelcol]
+      processors: [memory_limiter, batch]
       exporters: [prometheusremotewrite]
