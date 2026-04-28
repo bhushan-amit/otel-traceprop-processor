@@ -122,6 +122,9 @@ exporters:
       max_interval: 30s
       max_elapsed_time: 300s
 
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
 
 connectors:
   grafanacloud:
@@ -172,8 +175,9 @@ connectors:
 service:
   extensions:
     [
-      basicauth/grafana_cloud
+      health_check
     ]
+
   pipelines:
     traces:
       receivers: [otlp]

@@ -6,7 +6,7 @@ This processor is built to demonstrate custom trace manipulation within the Open
 
 ---
 
-## 🔧 Setup & Usage
+## 🔧 On Machine Setup & Usage
 
 ### 1. Build the Custom Collector
 
@@ -41,3 +41,97 @@ This will emit a single trace to the collector via OTLP gRPC on `localhost:4317`
 If wired correctly, the custom processor will enrich each span with a static attribute (e.g., `hello=world`).  
 You can verify this by observing logs in the console or from the configured exporter.
 
+
+---
+ 
+## 🐳 Docker Setup
+ 
+### Build the Image
+ 
+Builds for `linux/amd64` (AWS EB standard instances). Run from the repo root.
+ 
+> On Apple Silicon (M1/M2/M3), Docker Buildx handles cross-compilation automatically.
+ 
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  --tag otel-collector-custom:1.0.0 \
+  --load \
+  .
+```
+ 
+> **First build takes ~15 minutes** — Go downloads all modules and compiles the binary.
+> Subsequent builds are fast due to Docker layer caching.
+ 
+### Run the Image Locally
+ 
+```bash
+docker run --rm \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  -p 13133:13133 \
+  -p 8888:8888 \
+  otel-collector-custom:1.0.0
+```
+ 
+Ports:
+| Port  | Purpose                        |
+|-------|--------------------------------|
+| 4317  | OTLP gRPC receiver             |
+| 4318  | OTLP HTTP receiver             |
+| 8888  | Collector self-metrics         |
+| 13133 | Health check                   |
+ 
+### Verify the Collector is Healthy
+ 
+```bash
+curl http://localhost:13133/
+```
+ 
+Expected response:
+```json
+{"status":"Server available","upSince":"...","uptime":"..."}
+```
+ 
+### Send a Test Trace
+ 
+```bash
+curl -X POST http://localhost:4318/v1/traces \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resourceSpans": [{
+      "resource": {
+        "attributes": [{
+          "key": "service.name",
+          "value": {"stringValue": "test-service"}
+        }]
+      },
+      "scopeSpans": [{
+        "spans": [{
+          "traceId": "5B8EFFF798038103D269B633813FC60C",
+          "spanId": "EEE19B7EC3C1B174",
+          "name": "test-span",
+          "kind": 1,
+          "startTimeUnixNano": "1640000000000000000",
+          "endTimeUnixNano":   "1640000001000000000",
+          "attributes": [{
+            "key": "enterprise.id",
+            "value": {"stringValue": "test-enterprise-123"}
+          }]
+        }]
+      }]
+    }]
+  }'
+```
+ 
+Expected response: `{"partialSuccess":{}}` — empty partialSuccess means full success.
+ 
+### Point a Local App at the Collector
+ 
+From inside another Docker container on the same Mac:
+ 
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://host.docker.internal:4317"
+```
+ 
+---
