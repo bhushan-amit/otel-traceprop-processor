@@ -14,10 +14,12 @@ processors:
     name: "tracepropagator"
     path: "./processor/tracepropagatorprocessor"
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.124.0
+  - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.124.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbytraceprocessor v0.124.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.124.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.124.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.124.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.124.0
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.123.0
@@ -25,6 +27,7 @@ exporters:
   - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.123.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.124.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.124.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.124.0
 
 extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.123.0
@@ -32,3 +35,5 @@ extensions:
 connectors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.123.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.123.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.123.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/routingconnector v0.123.0
