@@ -1,0 +1,16 @@
+[Unit]
+Description=OpenTelemetry Collector Custom Binary
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ubuntu/otel-traceprop-processor
+ExecStart=/home/ubuntu/otel-traceprop-processor/otelcol-dist/otelcol-custom --config=config.yaml --set=service.telemetry.logs.level=error
+Restart=on-failure
+RestartSec=15
+CPUQuota=720%
+MemoryMax=90%
+
+[Install]
+WantedBy=multi-user.target
+

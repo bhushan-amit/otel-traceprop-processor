@@ -1,43 +1,156 @@
-# otel-traceprop-processor v0.1.0
+# otel-traceprop-processor
 
-A custom OpenTelemetry Collector processor that injects additional metadata into trace spans as they flow through the pipeline.
+Custom OpenTelemetry Collector for Clickpost production. Receives OTLP traces and logs from all services, enriches spans with `TraceParentName`, and exports to:
+- **MSK Kafka** (`otel-traces`, `otel-logs` topics) — primary pipeline
+- **Prometheus Remote Write** — span metrics and service graph metrics
 
-This processor is built to demonstrate custom trace manipulation within the OpenTelemetry Collector framework.
+Deployed on AWS Elastic Beanstalk (`Otel-collector-env-1`), ARM64 c8g.large, 4 instances behind an internal ALB.
 
 ---
 
-## 🔧 Setup & Usage
+## Deploying a config change (most common task)
 
-### 1. Build the Custom Collector
+`config.yaml` is baked into the Docker image at `/etc/otel/config.yaml`. Any change to config requires a new image build and EB deploy.
 
-Use the [OpenTelemetry Collector Builder](https://github.com/open-telemetry/opentelemetry-collector) to generate a custom binary with this processor included:
+### Prerequisites (one-time setup)
+- Docker with Buildx plugin (`docker buildx version`)
+- AWS CLI configured: `aws sts get-caller-identity` should return account `869420678547`
 
-```bash
-builder --config=otelcol-builder.yaml
-```
+### Step 1 — Edit config.yaml
 
-This will generate the custom collector binary at: ``` ./otelcol-dist/otelcol-custom```
+Make your changes. The pipeline section at the bottom of `config.yaml` is where exporters are wired up.
 
-### 2. Run the Collector with Configuration
-
-Start the collector using your built binary and a `config.yaml` that wires up the custom processor:
+### Step 2 — Build ARM64 image and push to ECR
 
 ```bash
-./otelcol-dist/otelcol-custom --config=config.yaml
+# Authenticate to ECR
+aws ecr get-login-password --region ap-south-1 | \
+  docker login --username AWS --password-stdin \
+  869420678547.dkr.ecr.ap-south-1.amazonaws.com
+
+# Build for ARM64 (EB runs c8g.large which is ARM) and push directly
+docker buildx build \
+  --platform linux/arm64 \
+  --tag 869420678547.dkr.ecr.ap-south-1.amazonaws.com/otel-collector-custom:latest \
+  --push \
+  .
 ```
 
-### 3. Test with Generate Sample Traces
+> First build takes ~15 minutes (Go compiles all modules). Subsequent builds use layer cache and take ~2 minutes.
 
-Send test traces to the collector using [`telemetrygen`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/cmd/telemetrygen):
+### Step 3 — Deploy to Elastic Beanstalk
 
 ```bash
-telemetrygen traces --otlp-insecure --traces 1
+cd eb-deploy
+
+# Create a deployment bundle
+zip -j eb-bundle.zip Dockerrun.aws.json
+
+# Upload to S3 and create a new EB application version
+LABEL="deploy-$(date +%Y%m%d_%H%M%S)"
+aws s3 cp eb-bundle.zip \
+  s3://elasticbeanstalk-ap-south-1-869420678547/otel-collector-custom/${LABEL}.zip \
+  --region ap-south-1
+
+aws elasticbeanstalk create-application-version \
+  --region ap-south-1 \
+  --application-name otel-collector-custom \
+  --version-label "${LABEL}" \
+  --source-bundle S3Bucket=elasticbeanstalk-ap-south-1-869420678547,S3Key=otel-collector-custom/${LABEL}.zip
+
+# Deploy to the environment (rolling, zero-downtime)
+aws elasticbeanstalk update-environment \
+  --region ap-south-1 \
+  --environment-name Otel-collector-env-1 \
+  --version-label "${LABEL}"
 ```
 
-This will emit a single trace to the collector via OTLP gRPC on `localhost:4317`.
+### Step 4 — Verify
 
-## ✅ Expected Behavior
+```bash
+# Watch environment health until green
+aws elasticbeanstalk describe-environment-health \
+  --region ap-south-1 \
+  --environment-name Otel-collector-env-1 \
+  --attribute-names All \
+  --query '[HealthStatus, Status]'
 
-If wired correctly, the custom processor will enrich each span with a static attribute (e.g., `hello=world`).  
-You can verify this by observing logs in the console or from the configured exporter.
+# Hit the health endpoint on an instance (needs VPN)
+curl http://10.100.x.x:13133/
+```
 
+---
+
+## Architecture
+
+```
+Apps (gzip-compressed OTLP gRPC/HTTP)
+  └── Internal ALB  :443
+        └── EB instances (4× c8g.large ARM64)
+              └── otelcol-custom container
+                    ├── traces pipeline
+                    │     processors: memory_limiter → batch → filter → transform → tracepropagator
+                    │     exporters:  spanmetrics (connector) → servicegraph (connector) → kafka/traces
+                    ├── logs pipeline
+                    │     processors: memory_limiter → batch
+                    │     exporters:  kafka/logs
+                    └── metrics pipelines
+                          exporters: prometheusremotewrite (10.100.32.79:3100)
+
+MSK Kafka (otel-traces, otel-logs)
+  └── ClickStack otelcol-consumer  →  ClickHouse
+```
+
+Key facts:
+- Config is at `/etc/otel/config.yaml` inside the container — editing the file on disk has no effect; must rebuild image
+- Kafka topics: `otel-traces`, `otel-logs` on MSK cluster `b-1/b-2.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092`
+- ECR image: `869420678547.dkr.ecr.ap-south-1.amazonaws.com/otel-collector-custom:latest`
+- EB environment: `Otel-collector-env-1` in `ap-south-1`
+
+---
+
+## Adding a new component (processor/exporter)
+
+If you need a component not already in `otelcol-builder.yaml`:
+
+1. Add the `gomod` entry to `otelcol-builder.yaml`
+2. Rebuild the image (Step 2 above) — the builder downloads and compiles the new component
+3. Wire it in `config.yaml`
+
+The `otelcol-dist/` directory is generated by the builder inside Docker — don't edit it by hand.
+
+---
+
+## Local development
+
+Build and run locally (useful for testing config changes before deploying):
+
+```bash
+# Build for your local arch (drop --platform flag)
+docker build --tag otel-collector-custom:dev .
+
+docker run --rm \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  -p 8888:8888 \
+  -p 13133:13133 \
+  otel-collector-custom:dev
+```
+
+Health check:
+```bash
+curl http://localhost:13133/
+# Expected: {"status":"Server available",...}
+```
+
+Send a test trace:
+```bash
+curl -X POST http://localhost:4318/v1/traces \
+  -H "Content-Type: application/json" \
+  -d '{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"test"}}]},"scopeSpans":[{"spans":[{"traceId":"5B8EFFF798038103D269B633813FC60C","spanId":"EEE19B7EC3C1B174","name":"test-span","kind":1,"startTimeUnixNano":"1640000000000000000","endTimeUnixNano":"1640000001000000000"}]}]}]}'
+```
+
+From another Docker container on the same Mac:
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://host.docker.internal:4317"
+```

@@ -1,0 +1,26 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "869420678547.dkr.ecr.ap-south-1.amazonaws.com/otel-collector-custom:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 13133,
+      "HostPort": 13133
+    },
+    {
+      "ContainerPort": 4317,
+      "HostPort": 4317
+    },
+    {
+      "ContainerPort": 4318,
+      "HostPort": 4318
+    },
+    {
+      "ContainerPort": 8888,
+      "HostPort": 8888
+    }
+  ],
+  "Logging": "/var/log/otel"
+}

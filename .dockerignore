@@ -1,0 +1,21 @@
+# Don't send the arm64 binary — we rebuild inside Docker
+otelcol-dist/otelcol-custom
+
+# Vim swap files
+*.swp
+*.swj
+*.swk
+*.swl
+*.swm
+*.swn
+*.swo
+
+# Backup configs
+config.yaml~
+old-config.yaml
+
+# Not needed in build
+.git/
+.DS_Store
+README.md
+otelcol-custom.service

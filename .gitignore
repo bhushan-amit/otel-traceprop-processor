@@ -1,2 +1,13 @@
 .idea/*
 .env
+.DS_Store
+
+# EB deployment bundles — regenerated on every deploy
+*.zip
+
+# Compiled binary — rebuilt inside Docker
+otelcol-dist/otelcol-custom
+
+# Stale config backups
+old-config.yaml
+config.yaml~
