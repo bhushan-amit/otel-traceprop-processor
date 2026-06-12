@@ -15,7 +15,6 @@ type tracePropagatorProcessor struct {
 }
 
 func newTracePropagatorProcessor(logger *zap.Logger, cfg *Config, next consumer.Traces) *tracePropagatorProcessor {
-	logger.Info("🚀 Initializing tracePropagatorProcessor")
 	return &tracePropagatorProcessor{
 		logger: logger,
 		config: cfg,
@@ -32,15 +31,14 @@ func (t *tracePropagatorProcessor) ConsumeTraces(ctx context.Context, td ptrace.
 }
 
 func (t *tracePropagatorProcessor) Shutdown(ctx context.Context) error {
-	t.logger.Info("🛑 Shutting down tracePropagatorProcessor")
 	return nil
 }
 
 func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.Traces) (ptrace.Traces, error) {
 	rs := td.ResourceSpans()
 
-	// Global map to store root span names keyed by their SpanID
-	parentSpanMap := make(map[string]string)
+	// Maps to track parent relationships
+	parentSpanMap := make(map[string]string)      // SpanID -> TraceName (for root spans)
 
 	for i := 0; i < rs.Len(); i++ {
 		scopeSpans := rs.At(i).ScopeSpans()
@@ -50,25 +48,15 @@ func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.
 
 			for k := 0; k < spans.Len(); k++ {
 				span := spans.At(k)
-
-				// Handle root span (no parent)
-				if span.ParentSpanID().IsEmpty() {
-					spanID := span.SpanID().String()
-					spanName := span.Name()
-
-					span.Attributes().PutStr("TraceName", spanName)
-					parentSpanMap[spanID] = spanName
-
-					// 🔍 Log root span processing
-					t.logger.Info("Set TraceName on root span",
-						zap.String("span_id", spanID),
-						zap.String("name", spanName))
-				}
+				spanID := span.SpanID().String()
+				// Maintain a directory os span
+				spanName := span.Name()
+				parentSpanMap[spanID] = spanName
 			}
 		}
 	}
 
-	// Second pass: set TraceParentName on child spans
+	// Second pass: Set TraceParentName and ConsumerName
 	for i := 0; i < rs.Len(); i++ {
 		scopeSpans := rs.At(i).ScopeSpans()
 
@@ -80,13 +68,9 @@ func (t *tracePropagatorProcessor) processTraces(ctx context.Context, td ptrace.
 				parentID := span.ParentSpanID().String()
 
 				if !span.ParentSpanID().IsEmpty() {
+					// Set TraceParentName if applicable
 					if parentName, ok := parentSpanMap[parentID]; ok {
 						span.Attributes().PutStr("TraceParentName", parentName)
-
-						t.logger.Info("Propagated TraceParentName to child span",
-							zap.String("span_id", span.SpanID().String()),
-							zap.String("parent_span_id", parentID),
-							zap.String("parent_name", parentName))
 					}
 				}
 			}

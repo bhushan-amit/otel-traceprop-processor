@@ -109,6 +109,51 @@ exporters:
       authorization: 382b5538-925f-4661-aef3-29aff5a268be
     compression: gzip
 
+  kafka/traces:
+    protocol_version: 3.9.0
+    brokers:
+      - b-1.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092
+      - b-2.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092
+    topic: otel-traces
+    encoding: otlp_proto
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 2000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 10s
+      max_elapsed_time: 60s
+    producer:
+      required_acks: 1
+      compression: zstd
+      flush_max_messages: 500
+      max_message_bytes: 10485760
+
+  kafka/logs:
+    protocol_version: 3.9.0
+    brokers:
+      - b-1.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092
+      - b-2.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092
+    topic: otel-logs
+    encoding: otlp_proto
+    partition_logs_by_resource_attributes: true
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 2000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 10s
+      max_elapsed_time: 60s
+    producer:
+      required_acks: 1
+      compression: zstd
+      flush_max_messages: 500
+      max_message_bytes: 10485760
+
   clickhouse:
     database: default
     endpoint: http://10.100.46.16:8123
@@ -181,8 +226,8 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes,transform/add_enterprise, tracepropagator]
-      exporters: [spanmetrics, servicegraph, clickhouse]
+      processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes, transform/add_enterprise, tracepropagator]
+      exporters: [spanmetrics, servicegraph, kafka/traces]
 
     metrics/spanmetrics:
       receivers: [spanmetrics, otlp, hostmetrics]
@@ -202,4 +247,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [clickhouse]
+      exporters: [kafka/logs]
