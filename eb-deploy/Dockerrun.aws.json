@@ -22,5 +22,7 @@
       "HostPort": 8888
     }
   ],
-  "Logging": "/var/log/otel"
+  "Logging": "/var/log/otel",
+  "Command": "--config=/etc/otel/config.yaml --set=service.telemetry.logs.level=warn",
+  "Restart": "always"
 }
