@@ -4,7 +4,7 @@ Custom OpenTelemetry Collector for Clickpost production. Receives OTLP traces an
 - **MSK Kafka** (`otel-traces`, `otel-logs` topics) — primary pipeline
 - **Prometheus Remote Write** — span metrics and service graph metrics
 
-Deployed on AWS Elastic Beanstalk (`Otel-collector-env-1`), ARM64 c8g.large, 4 instances behind an internal ALB.
+Deployed on AWS Elastic Beanstalk (`Otel-collector-env-1`), ARM64 c6g.2xlarge, 4 instances behind an internal ALB.
 
 ---
 
@@ -28,7 +28,7 @@ aws ecr get-login-password --region ap-south-1 | \
   docker login --username AWS --password-stdin \
   869420678547.dkr.ecr.ap-south-1.amazonaws.com
 
-# Build for ARM64 (EB runs c8g.large which is ARM) and push directly
+# Build for ARM64 (EB runs c6g.2xlarge which is ARM) and push directly
 docker buildx build \
   --platform linux/arm64 \
   --tag 869420678547.dkr.ecr.ap-south-1.amazonaws.com/otel-collector-custom:latest \
@@ -54,7 +54,7 @@ aws s3 cp eb-bundle.zip \
 
 aws elasticbeanstalk create-application-version \
   --region ap-south-1 \
-  --application-name otel-collector-custom \
+  --application-name otel-collector \
   --version-label "${LABEL}" \
   --source-bundle S3Bucket=elasticbeanstalk-ap-south-1-869420678547,S3Key=otel-collector-custom/${LABEL}.zip
 
@@ -86,7 +86,7 @@ curl http://10.100.x.x:13133/
 ```
 Apps (gzip-compressed OTLP gRPC/HTTP)
   └── Internal ALB  :443
-        └── EB instances (4× c8g.large ARM64)
+        └── EB instances (4× c6g.2xlarge ARM64)
               └── otelcol-custom container
                     ├── traces pipeline
                     │     processors: memory_limiter → batch → filter → transform → tracepropagator
