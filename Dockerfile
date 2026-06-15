@@ -36,6 +36,8 @@ RUN chmod +x /usr/local/bin/otelcol-custom
 
 COPY config.yaml /etc/otel/config.yaml
 
+ENV GOMEMLIMIT=13000MiB
+
 USER otel
 
 EXPOSE 4317
