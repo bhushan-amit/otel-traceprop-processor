@@ -228,14 +228,9 @@ service:
       processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes, transform/add_enterprise, tracepropagator]
       exporters: [spanmetrics, servicegraph, kafka/traces]
 
-    metrics/spanmetrics:
-      receivers: [spanmetrics, otlp, hostmetrics]
+    metrics:
+      receivers: [spanmetrics, servicegraph, otlp, hostmetrics]
       processors: [memory_limiter, batch, transform/drop_unneeded_resource_attributes, filter/http_metrics_drop]
-      exporters: [prometheusremotewrite]
-
-    metrics/servicegraph:
-      receivers: [servicegraph, otlp]
-      processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes]
       exporters: [prometheusremotewrite]
 
     metrics/hostmetrics:
