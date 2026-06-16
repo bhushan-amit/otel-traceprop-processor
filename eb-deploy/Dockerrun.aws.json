@@ -20,6 +20,10 @@
     {
       "ContainerPort": 8888,
       "HostPort": 8888
+    },
+    {
+      "ContainerPort": 55679,
+      "HostPort": 55679
     }
   ],
   "Logging": "/var/log/otel",

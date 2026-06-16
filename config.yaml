@@ -170,6 +170,8 @@ exporters:
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
+  zpages:
+    endpoint: 0.0.0.0:55679
 
 connectors:
   grafanacloud:
@@ -218,10 +220,7 @@ connectors:
 
 
 service:
-  extensions:
-    [
-      health_check
-    ]
+  extensions: [health_check, zpages]
 
   pipelines:
     traces:

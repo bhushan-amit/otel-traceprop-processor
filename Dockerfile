@@ -44,6 +44,7 @@ EXPOSE 4317
 EXPOSE 4318
 EXPOSE 8888
 EXPOSE 13133
+EXPOSE 55679
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -sf http://localhost:13133/ || exit 1
