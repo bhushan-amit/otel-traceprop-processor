@@ -76,7 +76,7 @@ processors:
       include:
         match_type: regexp
         metric_names:
-          - ^scylla_driver.*
+          - ^scylla.*
 
 exporters:
   debug:
