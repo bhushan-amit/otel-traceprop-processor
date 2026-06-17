@@ -1,6 +1,5 @@
 receivers:
   otlp:
-    # https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver# https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver
     protocols:
       grpc:
         include_metadata: true
@@ -71,6 +70,13 @@ processors:
         match_type: regexp
         metric_names:
           - http.*
+  filter/scylla_only:
+    error_mode: ignore
+    metrics:
+      include:
+        match_type: regexp
+        metric_names:
+          - ^scylla_driver.*
 
 exporters:
   debug:
@@ -228,15 +234,15 @@ service:
       processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes, transform/add_enterprise, tracepropagator]
       exporters: [spanmetrics, servicegraph, kafka/traces]
 
-    metrics:
-      receivers: [spanmetrics, servicegraph, otlp, hostmetrics]
+    metrics/prometheus:
+      receivers: [otlp, spanmetrics, servicegraph, hostmetrics, prometheus/otelcol]
       processors: [memory_limiter, batch, transform/drop_unneeded_resource_attributes, filter/http_metrics_drop]
       exporters: [prometheusremotewrite]
 
-    metrics/hostmetrics:
-      receivers: [ prometheus/otelcol]
-      processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes]
-      exporters: [prometheusremotewrite]
+    metrics/clickhouse:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, filter/scylla_only]
+      exporters: [clickhouse]
 
     logs:
       receivers: [otlp]
