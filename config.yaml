@@ -232,10 +232,10 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes, transform/add_enterprise, tracepropagator]
-      exporters: [spanmetrics, servicegraph, kafka/traces]
+      exporters: [spanmetrics, kafka/traces]
 
     metrics/prometheus:
-      receivers: [otlp, spanmetrics, servicegraph, hostmetrics, prometheus/otelcol]
+      receivers: [otlp, spanmetrics, hostmetrics, prometheus/otelcol]
       processors: [memory_limiter, batch, transform/drop_unneeded_resource_attributes, filter/http_metrics_drop]
       exporters: [prometheusremotewrite]
 
