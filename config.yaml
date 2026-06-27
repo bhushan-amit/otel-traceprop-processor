@@ -70,13 +70,16 @@ processors:
         match_type: regexp
         metric_names:
           - http.*
-  filter/scylla_only:
+  filter/clickhouse_metrics:
     error_mode: ignore
     metrics:
       include:
         match_type: regexp
         metric_names:
           - ^scylla.*
+          - ^system\..*
+          - ^process\..*
+          - ^cpython\..*
 
 exporters:
   debug:
@@ -241,7 +244,7 @@ service:
 
     metrics/clickhouse:
       receivers: [otlp]
-      processors: [memory_limiter, batch, filter/scylla_only]
+      processors: [memory_limiter, batch, filter/clickhouse_metrics]
       exporters: [clickhouse]
 
     logs:
