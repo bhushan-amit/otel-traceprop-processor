@@ -163,6 +163,33 @@ exporters:
       flush_max_messages: 500
       max_message_bytes: 10485760
 
+  # Session-replay (rrweb) events — split onto their own topic so the
+  # high-volume, bursty DOM stream cannot create consumer lag on the
+  # critical otel-logs topic. Routed here by the routing/logs connector
+  # on the rr-web.event log attribute.
+  kafka/rrweb:
+    protocol_version: 3.9.0
+    brokers:
+      - b-1.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092
+      - b-2.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092
+    topic: otel-rrweb
+    encoding: otlp_proto
+    partition_logs_by_resource_attributes: true
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 2000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 10s
+      max_elapsed_time: 60s
+    producer:
+      required_acks: 1
+      compression: zstd
+      flush_max_messages: 500
+      max_message_bytes: 10485760
+
   clickhouse:
     database: default
     endpoint: http://10.100.46.16:8123
@@ -247,7 +274,20 @@ service:
       processors: [memory_limiter, batch, filter/clickhouse_metrics]
       exporters: [clickhouse]
 
-    logs:
+    # Logs in: receive, then fan out via the routing/logs connector which
+    # splits rrweb session-replay events from ordinary logs on the
+    # rr-web.event attribute.
+    logs/in:
       receivers: [otlp]
       processors: [memory_limiter, batch]
+      exporters: [routing/logs]
+
+    # Ordinary application logs -> otel-logs topic -> otel_logs table.
+    logs/out-default:
+      receivers: [routing/logs]
       exporters: [kafka/logs]
+
+    # Session-replay (rrweb) logs -> otel-rrweb topic -> hyperdx_sessions table.
+    logs/out-rrweb:
+      receivers: [routing/logs]
+      exporters: [kafka/rrweb]
