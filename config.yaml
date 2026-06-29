@@ -80,6 +80,7 @@ processors:
           - ^system\..*
           - ^process\..*
           - ^cpython\..*
+          - ^traces_span_metrics.*
 
 exporters:
   debug:
@@ -270,7 +271,7 @@ service:
       exporters: [prometheusremotewrite]
 
     metrics/clickhouse:
-      receivers: [otlp]
+      receivers: [otlp, spanmetrics]
       processors: [memory_limiter, batch, filter/clickhouse_metrics]
       exporters: [clickhouse]
 
