@@ -34,6 +34,10 @@ processors:
     send_batch_max_size: 1024
     timeout: 10s
     # https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/batchprocessor
+  batch/clickhouse_metrics:
+    send_batch_size: 20000
+    send_batch_max_size: 50000
+    timeout: 15s
   tracepropagator: {}
   transform/add_enterprise:
     error_mode: ignore
@@ -80,7 +84,7 @@ processors:
           - ^system\..*
           - ^process\..*
           - ^cpython\..*
-          - ^traces_span_metrics.*
+          - ^traces.*
 
 exporters:
   debug:
@@ -272,7 +276,7 @@ service:
 
     metrics/clickhouse:
       receivers: [otlp, spanmetrics]
-      processors: [memory_limiter, batch, filter/clickhouse_metrics]
+      processors: [memory_limiter, filter/clickhouse_metrics, batch/clickhouse_metrics]
       exporters: [clickhouse]
 
     # Logs in: receive, then fan out via the routing/logs connector which
