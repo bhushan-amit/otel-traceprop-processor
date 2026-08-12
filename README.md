@@ -16,11 +16,34 @@ Deployed on AWS Elastic Beanstalk (`Otel-collector-env-1`), ARM64 c6g.2xlarge, 4
 - Docker with Buildx plugin (`docker buildx version`)
 - AWS CLI configured: `aws sts get-caller-identity` should return account `869420678547`
 
-### Step 1 — Edit config.yaml
+### Full deploy with Makefile (recommended)
+
+The `Makefile` wraps the full pipeline — ECR login, ARM64 image build, S3 upload, and EB rolling deploy — into single commands.
+
+```bash
+# Full pipeline: login → build → deploy
+make all
+
+# Or run steps individually:
+make ecr-login   # authenticate Docker to ECR
+make build       # build ARM64 image and push to ECR
+make deploy      # upload bundle to S3 and trigger EB rolling deploy
+
+# Check environment health and gRPC target group state
+make status
+```
+
+> `make all` may open the AWS CLI pager after deploy — press `q` to exit. To disable permanently: `export AWS_PAGER=""` in your shell.
+
+> First build takes ~15 minutes (Go compiles all modules). Subsequent builds use layer cache and take ~2 minutes.
+
+### Manual deploy (without Makefile)
+
+#### Step 1 — Edit config.yaml
 
 Make your changes. The pipeline section at the bottom of `config.yaml` is where exporters are wired up.
 
-### Step 2 — Build ARM64 image and push to ECR
+#### Step 2 — Build ARM64 image and push to ECR
 
 ```bash
 # Authenticate to ECR
@@ -36,9 +59,7 @@ docker buildx build \
   .
 ```
 
-> First build takes ~15 minutes (Go compiles all modules). Subsequent builds use layer cache and take ~2 minutes.
-
-### Step 3 — Deploy to Elastic Beanstalk
+#### Step 3 — Deploy to Elastic Beanstalk
 
 ```bash
 cd eb-deploy
@@ -65,7 +86,7 @@ aws elasticbeanstalk update-environment \
   --version-label "${LABEL}"
 ```
 
-### Step 4 — Verify
+#### Step 4 — Verify
 
 ```bash
 # Watch environment health until green
