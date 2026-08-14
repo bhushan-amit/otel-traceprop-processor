@@ -8,7 +8,7 @@ NO_APIGW_CONF="$APP_ROOT/.platform/nginx/conf.d/realip/00_realip_no_api_gateway.
 LOG=/var/log/realip-select.log
 
 # environments with no API Gateway in front
-NO_APIGW_ENVS="cOtel-collector-env-1"
+NO_APIGW_ENVS="Otel-collector-env-1"
 
 log(){ echo "$(date -u) realip-select: $*" >> "$LOG" 2>/dev/null; }
 
