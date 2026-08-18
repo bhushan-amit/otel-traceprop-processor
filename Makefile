@@ -5,8 +5,9 @@ S3_BUCKET  := elasticbeanstalk-ap-south-1-869420678547
 S3_PREFIX  := otel-collector-custom
 REGION     := ap-south-1
 LABEL      := deploy-$(shell date +%Y%m%d_%H%M%S)
+BUNDLE     := eb-bundle.zip
 
-.PHONY: build push deploy all
+.PHONY: build bundle deploy ecr-login status all
 
 build:
 	docker buildx build \
@@ -14,10 +15,15 @@ build:
 		--tag $(ECR_REPO):latest \
 		--push .
 
-deploy:
-	cd eb-deploy && \
-	zip -j eb-bundle.zip Dockerrun.aws.json && \
-	aws s3 cp eb-bundle.zip s3://$(S3_BUCKET)/$(S3_PREFIX)/$(LABEL).zip --region $(REGION) && \
+bundle:
+	rm -f $(BUNDLE)
+	zip -r $(BUNDLE) .platform -x '*.DS_Store'
+	zip -j $(BUNDLE) eb-deploy/Dockerrun.aws.json
+	@echo "--- bundle contents ---"
+	@zipinfo -1 $(BUNDLE)
+
+deploy: bundle
+	aws s3 cp $(BUNDLE) s3://$(S3_BUCKET)/$(S3_PREFIX)/$(LABEL).zip --region $(REGION) && \
 	aws elasticbeanstalk create-application-version \
 		--region $(REGION) \
 		--application-name $(EB_APP) \
