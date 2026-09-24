@@ -106,8 +106,10 @@ exporters:
       initial_interval: 1s
       max_interval: 30s
       max_elapsed_time: 300s
-  prometheusremotewrite:
-    endpoint: "http://10.100.32.79:3100/api/v1/write"  # Prometheus remote write endpoint
+  prometheusremotewrite/prod:
+    endpoint: "http://10.100.40.110:8080/api/v1/write"
+    headers:
+      Authorization: "${PROD_PROMETHEUS_AUTH}"
     target_info:
       enabled: true
     resource_to_telemetry_conversion:
@@ -270,9 +272,9 @@ service:
       exporters: [spanmetrics, kafka/traces]
 
     metrics/prometheus:
-      receivers: [otlp, spanmetrics, hostmetrics, prometheus/otelcol]
+      receivers: [hostmetrics, prometheus/otelcol]
       processors: [memory_limiter, batch, transform/drop_unneeded_resource_attributes, filter/http_metrics_drop]
-      exporters: [prometheusremotewrite]
+      exporters: [prometheusremotewrite/prod]
 
     metrics/clickhouse:
       receivers: [otlp, spanmetrics]
