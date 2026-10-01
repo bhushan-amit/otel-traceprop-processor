@@ -217,8 +217,6 @@ extensions:
     endpoint: 0.0.0.0:55679
 
 connectors:
-  grafanacloud:
-    host_identifiers: ["host.name"]
   routing/logs:
     default_pipelines: [logs/out-default]
     error_mode: ignore
@@ -226,40 +224,6 @@ connectors:
       - context: log
         statement: route() where IsMatch(attributes["rr-web.event"], ".*")
         pipelines: [logs/out-rrweb]
-  servicegraph:
-    latency_histogram_buckets: [100ms, 250ms, 1s, 5s, 10s, 30s]
-    store:
-      ttl: 2m
-      max_items: 1000
-  spanmetrics:
-    histogram:
-      explicit:
-        buckets: [100us, 1ms, 2ms, 6ms, 10ms, 100ms, 250ms, 500ms, 750ms, 1s, 2s, 5s, 10s, 30s]
-    dimensions:
-      - name: http.request.method
-        default: GET
-      - name: http.response.status_code
-      - name: http.status_code
-      - name: host.name
-      - name: http.route
-      - name: TraceParentName
-        default: NOT_FOUND
-      - name: enterprise.id
-      - name: meta.status.code
-      - name: courierpartner.id
-    exemplars:
-      enabled: true
-    dimensions_cache_size: 1000
-    aggregation_temporality: "AGGREGATION_TEMPORALITY_CUMULATIVE"
-    metrics_flush_interval: 15s
-    metrics_expiration: 5m
-    events:
-      enabled: true
-      dimensions:
-        - name: exception.type
-        - name: exception.message
-    resource_metrics_key_attributes:
-      - service.name
 
 
 service:
@@ -269,7 +233,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, filter/http_metrics_drop, transform/drop_unneeded_resource_attributes, transform/add_enterprise, tracepropagator]
-      exporters: [spanmetrics, kafka/traces]
+      exporters: [kafka/traces]
 
     metrics/prometheus:
       receivers: [hostmetrics, prometheus/otelcol]
@@ -277,7 +241,7 @@ service:
       exporters: [prometheusremotewrite/prod]
 
     metrics/clickhouse:
-      receivers: [otlp, spanmetrics]
+      receivers: [otlp]
       processors: [memory_limiter, filter/clickhouse_metrics, batch/clickhouse_metrics]
       exporters: [clickhouse]
 
