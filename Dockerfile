@@ -1,9 +1,9 @@
 # ──────────────────────────────────────────────────────────────
 # Stage 1: Build
 # ──────────────────────────────────────────────────────────────
-FROM golang:1.24-bookworm AS builder
+FROM golang:1.26-bookworm AS builder
 
-RUN go install go.opentelemetry.io/collector/cmd/builder@v0.123.0
+RUN go install go.opentelemetry.io/collector/cmd/builder@v0.162.0
 
 WORKDIR /build
 

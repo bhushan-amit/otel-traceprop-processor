@@ -129,7 +129,7 @@ Factory registration follows the standard OTel processor pattern: `factory.go`'s
 | Topic | Partitions | Consumer group (ClickStack) |
 |---|---|---|
 | `otel-traces` | 4 | `clickstack-otel-consumer` |
-| `otel-logs` | 4 | `clickstack-otel-consumer` |
+| `otel-logs` | 24 | `clickstack-otel-consumer` |
 
 Brokers: `b-1.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092`, `b-2...`
 
