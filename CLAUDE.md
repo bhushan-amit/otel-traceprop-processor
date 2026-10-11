@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A custom OpenTelemetry Collector distribution with a bespoke `tracepropagator` processor. The processor injects `TraceParentName` attributes into child spans by resolving parent span IDs to their span names — enabling downstream querying by root/parent operation name.
+A custom OpenTelemetry Collector distribution built with `otelcol-builder`. Deployed on AWS Elastic Beanstalk (`Otel-collector-env-1`), 11× c6g.2xlarge ARM64, behind an internal ALB.
 
-Deployed on AWS Elastic Beanstalk (`Otel-collector-env-1`), 4× c6g.2xlarge ARM64, behind an internal ALB.
+The `tracepropagator` processor (injects `TraceParentName` into child spans) is compiled in but **not used** in the active pipeline — it was removed when the pipeline moved to ClickHouse.
 
 ---
 
@@ -14,15 +14,12 @@ Deployed on AWS Elastic Beanstalk (`Otel-collector-env-1`), 4× c6g.2xlarge ARM6
 
 ### Build
 
-Install the builder tool (once):
+Install the builder tool (once) — version must match `otelcol-builder.yaml`:
 ```bash
-go install go.opentelemetry.io/collector/cmd/builder@v0.123.0
+go install go.opentelemetry.io/collector/cmd/builder@v0.162.0
 ```
 
-> ⚠️ Version skew: `otelcol-builder.yaml` pins core/contrib components at a mix of
-> `v0.123.0` and `v0.124.0`. If the build fails on incompatible module versions,
-> align all entries to the same minor (and match the `builder` version to it)
-> before re-running.
+Requires Go 1.26+. The Dockerfile uses `golang:1.26-bookworm` as the build base.
 
 Build the collector binary from the manifest:
 ```bash
@@ -78,16 +75,17 @@ The repo has two separate Go modules:
 ### Collector pipeline (config.yaml) — current production state
 
 ```
-Receivers              Processors                                    Exporters
-─────────────────      ──────────────────────────────────────────    ──────────────────────────────
-OTLP (4317/4318)  →   memory_limiter → batch → filter →         →   kafka/traces  (MSK otel-traces)
-Host metrics           transform → tracepropagator                   kafka/logs    (MSK otel-logs)
-Prometheus (8888)                                                     prometheusremotewrite (10.100.32.79:3100)
-                       spanmetrics connector → prometheusremotewrite
-                       servicegraph connector → prometheusremotewrite
+Receivers              Processors                                         Exporters
+─────────────────      ───────────────────────────────────────────────    ──────────────────────────────────────────
+OTLP (4317/4318)  →   memory_limiter → batch → filter →              →   kafka/traces  (MSK otel-traces, 16 partitions, least_backup)
+Host metrics           transform/drop_unneeded → transform/add_enterprise kafka/logs    (MSK otel-logs, 24 partitions)
+Prometheus (8888)                                                          kafka/rrweb   (MSK otel-rrweb, rrweb events)
+                       routing/logs connector splits rrweb vs app logs     prometheusremotewrite (10.100.40.110:8080)
 ```
 
 **What is NOT in the pipeline (defined but unused):** `clickhouse`, `otlp/tempo`, `otlphttp/loki`, `otlphttp/grafana_cloud`, `otlp/hdx`. Do not add them back without confirming intent.
+
+`kafka/traces` uses `record_partitioner: least_backup` (v0.162.0 franz-go feature) — routes each batch to the partition with fewest in-flight records, spreading load evenly across all 16 partitions. Do NOT use `partition_traces_by_id` — it creates one Kafka message per trace ID and causes a message-count explosion.
 
 `config.yaml` is baked into the Docker image at `/etc/otel/config.yaml`. Editing the file on the instance has no effect — must rebuild image and redeploy.
 
@@ -128,12 +126,13 @@ Factory registration follows the standard OTel processor pattern: `factory.go`'s
 
 | Topic | Partitions | Consumer group (ClickStack) |
 |---|---|---|
-| `otel-traces` | 4 | `clickstack-otel-consumer` |
+| `otel-traces` | 16 | `clickstack-otel-consumer` |
 | `otel-logs` | 24 | `clickstack-otel-consumer` |
+| `otel-rrweb` | — | (consumer TBD) |
 
 Brokers: `b-1.clickpostotelkafka.k5tbao.c2.kafka.ap-south-1.amazonaws.com:9092`, `b-2...`
 
-Producer config (`config.yaml`): `partition_logs_by_resource_attributes: true` on `kafka/logs` — logs from the same service consistently hash to the same Kafka partition.
+Producer config: `partition_logs_by_resource_attributes: true` on `kafka/logs` and `kafka/rrweb` — logs from the same service hash to the same partition. Safe because resource attribute cardinality is low (~20–50 unique services), unlike trace IDs.
 
 ### gRPC Target Group attachment
 
