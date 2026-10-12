@@ -163,7 +163,8 @@ exporters:
     logs:
       topic: otel-logs
       encoding: otlp_proto
-    partition_logs_by_resource_attributes: true
+    record_partitioner:
+      least_backup: {}
     sending_queue:
       enabled: true
       num_consumers: 4
@@ -188,7 +189,8 @@ exporters:
     logs:
       topic: otel-rrweb
       encoding: otlp_proto
-    partition_logs_by_resource_attributes: true
+    record_partitioner:
+      least_backup: {}
     sending_queue:
       enabled: true
       num_consumers: 4
