@@ -10,7 +10,7 @@ WORKDIR /build
 COPY otelcol-builder.yaml .
 COPY processor/ ./processor/
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOMAXPROCS=2 \
     /go/bin/builder \
     --config=otelcol-builder.yaml \
     --output-path=/build/otelcol-dist
